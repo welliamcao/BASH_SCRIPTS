@@ -1,13 +1,13 @@
 #!/bin/bash
 #@create by welliam.cao 303350019@qq.com 2014/06/20
-EMAIL_FROM='xxxx@qq.com'
+EMAIL_FROM='xxxx@com'
 EMAIL_SMTP='smtp.qq.com'
-EMAIL_PASSWD='xxx'
-EMAIL_ACCOUT='xxxxx'
+EMAIL_PASSWD='sssxxx'
+EMAIL_ACCOUT='xxx'
 OUTPUT_FILE=/tmp/output.$$
 #use for get system version and kernel information
 get_host_info_soft(){
-echo -e "==================== Host soft infomation =====================" >> ${OUTPUT_FILE}
+echo -e "==================== Host soft information =====================" >> ${OUTPUT_FILE}
 echo -e "Host_name: $(hostname)" >> ${OUTPUT_FILE}
 echo -e "Soft System: $(cat /etc/issue|sed -ne '1p')" >> ${OUTPUT_FILE}
 echo -e "Linux kernel versions: $(uname -na|awk '{print$3}')" >> ${OUTPUT_FILE}
@@ -16,13 +16,16 @@ echo -e "\n" >> ${OUTPUT_FILE}
 }
 #use for get the network card information
 get_host_info_net(){
-echo -e "===================== Network infomation =====================" >> ${OUTPUT_FILE}
+echo -e "===================== Network information =====================" >> ${OUTPUT_FILE}
+echo "Network Card IPaddress/MAC:" >> ${OUTPUT_FILE}
 ifconfig |awk  'BEGIN{RS=""}/HWaddr/&&$7~/addr/{gsub(/:/,"-",$5);gsub(/inet/,"\tIP",$6);gsub(/:/,": ",$7);print$1"\t"$4":",$5"\n"$6,$7}' >> ${OUTPUT_FILE}
+echo "Network Card Speed:"  >> ${OUTPUT_FILE}
+for cd in $(ifconfig |awk '/HWaddr/{print$1}');do speed=$(ethtool ${cd}|grep "Speed:");echo "${cd} ${speed}" >> ${OUTPUT_FILE};done 
 echo -e "\n" >> ${OUTPUT_FILE}
 }
 #use for get system accout information
 get_host_info_accout(){
-echo -e "====================== Accout infomation =====================" >> ${OUTPUT_FILE}
+echo -e "====================== Accout information =====================" >> ${OUTPUT_FILE}
 awk -F':' 'BEGIN{print"The accout who can login in the system:"}!/(nologin|shutdown|sync|halt)/{print$1"\t"$6}' /etc/passwd >> ${OUTPUT_FILE}
 who|awk -F'[)( ]+' 'BEGIN{print"\nCurrent login user:"}/pts/{print$1"\t"$5}'  >> ${OUTPUT_FILE}
 echo -e "\n" >> ${OUTPUT_FILE}
@@ -45,10 +48,11 @@ echo -e "\n"
 get_host_info_hardware(){
 if [[ $(rpm -qa|grep dmidecode|wc -l) -gt 0 ]]
   then
-    echo -e "=================== Hardware infomation ===================" >> ${OUTPUT_FILE}
-    echo  -e "-------------------- CPU INFOMATION -------------------" >> ${OUTPUT_FILE}
+    echo -e "=================== Hardware information ===================" >> ${OUTPUT_FILE}
+    echo  -e "-------------------- CPU INFORMATION -------------------" >> ${OUTPUT_FILE}
     awk -F':' '/model name/&&!a[$0]++{print"CPU model:"$2}' /proc/cpuinfo >> ${OUTPUT_FILE}
-    echo -e "CPU physical number: $(grep 'physical id' /proc/cpuinfo|uniq |wc -l)" >> ${OUTPUT_FILE}
+    echo -e "CPU physical number: $(cat /proc/cpuinfo |grep "physical id"|sort |uniq|wc -l)" >> ${OUTPUT_FILE}
+    echo -e "CPU MHz: $(grep "cpu MHz" /proc/cpuinfo|awk -F':' '!a[$2]++{print$2}')" >> ${OUTPUT_FILE} 
     echo -e "CPU core number: $(grep 'core id' /proc/cpuinfo | sort -u | wc -l)" >> ${OUTPUT_FILE}
     echo -e "CPU thread number: $(grep 'processor' /proc/cpuinfo | sort -u | wc -l)" >> ${OUTPUT_FILE}
     echo -e "Whether to support virtualization ?"  >> ${OUTPUT_FILE}
@@ -58,17 +62,17 @@ if [[ $(rpm -qa|grep dmidecode|wc -l) -gt 0 ]]
         else
             echo -e "Don't support Virtualization." >> ${OUTPUT_FILE}
     fi
-    echo -e "-------------------- MEM INFOMATION -------------------" >> ${OUTPUT_FILE} 
+    echo -e "-------------------- MEM INFORMATION -------------------" >> ${OUTPUT_FILE} 
     dmidecode |grep -A5  "Memory Device$" |awk  '$0~/Size: [0-9]+/{a[$2]++;sum+=$2}END{for(x in a)print a[x]" pieces of",x" MB memory";print "Total of "sum" MB"}' >> ${OUTPUT_FILE}
     free -m|awk 'NR==2{sum=$4+$6+$7;used=$3-$6-$7;print "Free_mem: " sum"M""\n""Used_mem: "used"M"}' >> ${OUTPUT_FILE}
     echo -e "\n" >> ${OUTPUT_FILE}
-    echo -e "------------------- DISK INFOMATION - -----------------" >> ${OUTPUT_FILE}
+    echo -e "------------------- DISK INFORMATION - -----------------" >> ${OUTPUT_FILE}
     echo "Disk list:" >> ${OUTPUT_FILE}
     fdisk -l|awk -F',' '/Disk \/dev/{gsub(/Disk /,"",$1);print$1}' >> ${OUTPUT_FILE}
     echo -e "Partition of Disk:" >> ${OUTPUT_FILE}
     df -lh >> ${OUTPUT_FILE}
     echo -e "\n" >> ${OUTPUT_FILE}
-    echo -e "------------------- MACHINE INFOMATION -----------------" >> ${OUTPUT_FILE}
+    echo -e "------------------- MACHINE INFORMATION -----------------" >> ${OUTPUT_FILE}
     dmidecode | grep "Product Name" |awk -F':' 'NR==1{print"Machine model: "$2}'  >> ${OUTPUT_FILE}
     dmidecode | grep "Product Name" |awk -F':' 'NR==2{print"Machine serial number: "$2}' >> ${OUTPUT_FILE}
     echo -e "\n" >> ${OUTPUT_FILE}
