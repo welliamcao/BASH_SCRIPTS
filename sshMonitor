@@ -1,0 +1,64 @@
+#!/bin/bash
+################################################
+#      create by welliam 2014/12/02            #
+#      Email:303350019@qq.com                  #
+################################################
+NAME=sshMonitor
+LOGFILE=/var/tmp/$NAME.log
+PIDFILE=/var/tmp/$NAME.pid
+appName="sshMonitor"
+. /etc/rc.d/init.d/functions
+function run(){
+        for ip in $(awk '/Failed password/{a[$(NF-3)]++}END{for(x in a)if(a[x]>3)print x}' /var/log/secure)
+         do
+          if [[ $(grep -c "${ip}" /etc/hosts.deny) -eq 0 ]]
+              then
+               echo "sshd:${ip}" >> /etc/hosts.deny
+          fi
+     done
+}
+function start(){
+    if [ -f "$PIDFILE" ]; then
+        echo $PIDFILE
+        exit 2
+    fi
+
+    for (( ; ; ))
+    do
+        run
+        sleep 30
+    done &
+    if [ $? -eq 0 ]; then
+            action $"Starting $appName: " /bin/true
+        else
+            action $"Starting $appName: " /bin/false
+        fi
+    echo $! > $PIDFILE
+}
+
+function stop(){
+    [ -f $PIDFILE ] && kill `cat $PIDFILE`
+    if [ $? -eq 0 ]; then 
+        action $"Starting $appName: " /bin/true
+    else
+        action $"Starting $appName: " /bin/false
+    fi
+    rm -rf $PIDFILE
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  restart)
+    stop
+    start
+    ;;
+  *)
+    echo $"Usage: $0 {start|stop|restart}"
+    exit 2
+esac
+exit $?
